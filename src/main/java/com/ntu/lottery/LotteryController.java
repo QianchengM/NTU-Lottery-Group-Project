@@ -148,4 +148,88 @@ public class LotteryController {
 
         return "兑换成功！您消耗了 " + cost + " 积分，获得了: " + prizeName;
     }
+    // ==========================================
+    // 增强功能: 签到、排行榜、邀请
+    // ==========================================
+
+    // Feature 1: 每日签到 (Daily Check-in)
+    // 逻辑: 判断今天是不是已经签到了 -> 没签到就加分
+    @GetMapping("/daily/checkin")
+    public String dailyCheckIn(@RequestParam Long userId) {
+        // 1. 查用户最后一次签到时间
+        String sql = "SELECT last_checkin_date FROM sys_user WHERE id = ?";
+        // 注意: 这里可能查出来是 null (新用户没签过到)
+        List<Map<String, Object>> result = jdbcTemplate.queryForList(sql, userId);
+        
+        if (result.isEmpty()) return "User not found";
+        
+        java.sql.Date lastDate = (java.sql.Date) result.get(0).get("last_checkin_date");
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        // 2. 如果今天已经签到了
+        if (lastDate != null && lastDate.toLocalDate().equals(today)) {
+            return "Failed: You have already checked in today!";
+        }
+
+        // 3. 签到成功: 加 50 分，更新日期
+        jdbcTemplate.update("UPDATE sys_user SET points = points + 50, last_checkin_date = ? WHERE id = ?", today, userId);
+        
+        return "Success! +50 Points added.";
+    }
+
+    // Feature 2: 大奖排行榜 (Winners Leaderboard)
+    // 逻辑: 只查“实物奖品”(type=1) 的中奖记录，按时间倒序
+    @GetMapping("/leaderboard")
+    public List<Map<String, Object>> getLeaderboard() {
+        // 连表查询: 拿到中奖人的名字 (u.username) 和奖品名
+        String sql = "SELECT u.username, r.prize_name, r.create_time " +
+                     "FROM record r JOIN sys_user u ON r.user_id = u.id " +
+                     "WHERE r.prize_type = 1 " +  // 只显示大奖(实物)
+                     "ORDER BY r.create_time DESC LIMIT 10";
+        return jdbcTemplate.queryForList(sql);
+    }
+
+    // Feature 3: 邀请码返利 (Invite Friend)
+    // 逻辑: 输入别人的码 -> 别人加分，自己也加分
+    @GetMapping("/invite/submit")
+    public String submitInviteCode(@RequestParam Long userId, @RequestParam String code) {
+        // 1. 不能填自己的码 (假设 Alice 的码是 A001)
+        // 实际项目要查库，这里Demo简化一下，防止简单的逻辑漏洞
+        
+        // 2. 查找这个邀请码是谁的
+        String findInviterSql = "SELECT id, username FROM sys_user WHERE invite_code = ?";
+        List<Map<String, Object>> inviters = jdbcTemplate.queryForList(findInviterSql, code);
+
+        if (inviters.isEmpty()) {
+            return "Invalid Code: Invite code not found.";
+        }
+
+        Long inviterId = (Long) inviters.get(0).get("id");
+        String inviterName = (String) inviters.get(0).get("username");
+
+        if (inviterId.equals(userId)) {
+            return "Failed: You cannot invite yourself!";
+        }
+
+        // 3. 双方加分 (奖励机制: 邀请人+100，填写人+50)
+        // 给邀请人加分
+        jdbcTemplate.update("UPDATE sys_user SET points = points + 100 WHERE id = ?", inviterId);
+        // 给自己加分
+        jdbcTemplate.update("UPDATE sys_user SET points = points + 50 WHERE id = ?", userId);
+
+        return "Success! You got 50 points, and " + inviterName + " got 100 points.";
+    }
+    // ==========================================
+    // 历史记录模块 (User History)
+    // ==========================================
+
+    // 接口 5: 查看我的抽奖流水
+    // 逻辑: 查 record 表，按时间倒序排
+    @GetMapping("/user/history")
+    public List<Map<String, Object>> getUserHistory(@RequestParam Long userId) {
+        // 这里的 create_time 数据库存的是 UTC 时间或者服务器时间
+        // 查出来返给前端，前端自己格式化
+        String sql = "SELECT * FROM record WHERE user_id = ? ORDER BY create_time DESC";
+        return jdbcTemplate.queryForList(sql, userId);
+    }
 }
