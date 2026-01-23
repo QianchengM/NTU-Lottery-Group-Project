@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - NTU Lottery</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #2c3e50; color: white; padding-top: 30px; }
+        .admin-card {
+            background: white;
+            color: black;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .table input { width: 80px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🛠️ Admin Dashboard</h1>
+        <a href="/" class="btn btn-outline-light">Back to Home</a>
+    </div>
+
+    <div class="admin-card">
+        <h4 class="mb-3">Manage Prizes (Activity 1)</h4>
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Prize Name</th>
+                    <th>Stock</th>
+                    <th>Probability (%)</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="prizeTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 1. Load data on startup
+    window.onload = function() {
+        loadData();
+    };
+
+    function loadData() {
+        fetch('/prizes')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('prizeTableBody');
+                tbody.innerHTML = '';
+                
+                // Filter Activity 1 only
+                const list = data.filter(p => p.activity_id === 1);
+                
+                list.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${p.id}</td>
+                            <td>${p.name}</td>
+                            <td>
+                                <input type="number" id="stock_${p.id}" class="form-control" value="${p.stock}">
+                            </td>
+                            <td>
+                                <input type="number" id="prob_${p.id}" class="form-control" value="${p.probability}">
+                            </td>
+                            <td>
+                                <button onclick="savePrize(${p.id})" class="btn btn-primary btn-sm">Save</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+
+    // 2. Save function
+    function savePrize(id) {
+        const stock = document.getElementById('stock_' + id).value;
+        const prob = document.getElementById('prob_' + id).value;
+
+        // Call our new Backend API
+        fetch(`/admin/update?id=${id}&stock=${stock}&probability=${prob}`)
+            .then(res => res.text())
+            .then(text => {
+                alert(text); // Show "Update Success"
+                loadData();  // Refresh table
+            });
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Java 编译产生的文件 
+target/
+*.class
+
+# IDEA 和 VS Code 的个人配置 
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# 系统产生的垃圾文件
+.DS_Store
+Thumbs.db
+
+# Maven 包装器 
+.mvn/
+mvnw
+mvnw.cmd
