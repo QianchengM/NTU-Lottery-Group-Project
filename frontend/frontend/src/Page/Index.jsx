@@ -1,30 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, CalendarCheck, ShoppingBag, History, Settings, Trophy } from 'lucide-react';
+import { Gift, CalendarCheck, ShoppingBag, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { api } from '../lib/api.js';
 const Index = () => {
     const [prizes, setPrizes] = useState([]);
-    const [points, setPoints] = useState(1000);
+    const [points, setPoints] = useState(null);
     const [drawing, setDrawing] = useState(false);
     const [result, setResult] = useState(null);
     const userId = 1; // 对应 Alice
 
     useEffect(() => {
         fetchPrizes();
+        fetchPoints();
     }, []);
 
-    const fetchPrizes = () => {
-        fetch('/prizes').then(res => res.json()).then(setPrizes);
+    const fetchPrizes = async () => {
+        const data = await api.get(`/api/prizes?activityId=1`);
+        setPrizes(Array.isArray(data) ? data : []);
     };
+
+    const fetchPoints = async () => {
+        const p = await api.get(`/api/user/points?userId=${userId}`);
+        setPoints(p);
+    };
+
+    const handleCheckIn = async () => {
+        setResult(null);
+        try {
+            const msg = await api.get(`/api/user/checkin?userId=${userId}&rewardPoints=50`);
+            setResult(msg);
+        } catch (e) {
+            setResult(e?.message || 'Check-in failed');
+        } finally {
+            await fetchPoints();
+        }
+    }
 
     const handleDraw = async () => {
         setDrawing(true);
         setResult(null);
         try {
-            const res = await fetch(`/draw?userId=${userId}&activityId=1`);
-            const text = await res.text();
-            setResult(text);
-            setPoints(prev => prev - 50); // 对应原逻辑扣分
-            fetchPrizes(); // 刷新库存
+            const msg = await api.get(`/api/draw?userId=${userId}&activityId=1`);
+            setResult(msg);
+            await fetchPrizes(); // 刷新库存
+            await fetchPoints(); // 刷新积分
+        } catch (e) {
+            setResult(e?.message || 'Draw failed');
         } finally {
             setDrawing(false);
         }
@@ -39,10 +61,10 @@ const Index = () => {
                 </h1>
                 <div className="flex items-center gap-4 text-slate-600">
                     <div className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full font-semibold">
-                        💰 {points} Points
+                        💰 {points ?? '...'} Points
                     </div>
-                    <button className="hover:text-indigo-600 flex items-center gap-1"><CalendarCheck size={18}/> Check-in</button>
-                    <button className="hover:text-indigo-600 flex items-center gap-1"><ShoppingBag size={18}/> Mall</button>
+                    <button onClick={handleCheckIn} className="hover:text-indigo-600 flex items-center gap-1"><CalendarCheck size={18}/> Check-in</button>
+                    <Link to="/mall" className="hover:text-indigo-600 flex items-center gap-1"><ShoppingBag size={18}/> Mall</Link>
                 </div>
             </nav>
 
@@ -54,7 +76,7 @@ const Index = () => {
                         <p className="text-slate-500 mb-8">每次消耗 50 积分，100% 中奖概率</p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8 text-left">
-                            {prizes.filter(p => p.activity_id === 1).map(prize => (
+                            {prizes.map(prize => (
                                 <div key={prize.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                                     <div className="text-sm text-slate-500">{prize.name}</div>
                                     <div className="font-bold text-slate-800">库存: {prize.stock}</div>
@@ -79,7 +101,7 @@ const Index = () => {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={`mt-6 p-4 rounded-xl font-bold ${
-                                        result.includes('Congratulations') ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'
+                                        result.includes('Success') || result.includes('恭喜') ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'
                                     }`}
                                 >
                                     {result}

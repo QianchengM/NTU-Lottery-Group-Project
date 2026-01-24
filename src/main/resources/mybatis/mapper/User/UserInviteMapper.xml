@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.UserInviteMapper">
+
+    <!-- 只绑定一次：如果 user_id 已存在，返回 0 -->
+    <insert id="bindOnce">
+        INSERT INTO user_invite(user_id, inviter_id)
+        SELECT #{userId}, #{inviterId}
+        WHERE NOT EXISTS (SELECT 1 FROM user_invite WHERE user_id = #{userId})
+    </insert>
+
+</mapper>

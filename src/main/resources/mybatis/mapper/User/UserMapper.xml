@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.UserMapper">
+
+    <select id="selectLastCheckinDate" resultType="java.time.LocalDate">
+        SELECT last_checkin_date FROM sys_user WHERE id = #{id}
+    </select>
+
+    <select id="selectPoints" resultType="int">
+        SELECT points FROM sys_user WHERE id = #{id}
+    </select>
+
+    <select id="selectByInviteCode" resultType="map">
+        SELECT id, username FROM sys_user WHERE invite_code = #{inviteCode}
+    </select>
+
+    <update id="addPoints">
+        UPDATE sys_user SET points = points + #{delta} WHERE id = #{id}
+    </update>
+
+    <update id="updateCheckin">
+        UPDATE sys_user
+        SET points = points + #{rewardPoints},
+            last_checkin_date = #{today}
+        WHERE id = #{id}
+          AND (last_checkin_date IS NULL OR last_checkin_date &lt;&gt; #{today})
+    </update>
+
+    <update id="deductPointsGuard">
+        UPDATE sys_user
+        SET points = points - #{cost}
+        WHERE id = #{id} AND points &gt;= #{cost}
+    </update>
+
+</mapper>

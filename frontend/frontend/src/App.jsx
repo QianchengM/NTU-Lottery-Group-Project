@@ -1,12 +1,9 @@
-import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from './Page/Index.jsx';
 import Mall from './Page/Mall.jsx'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
       <Router>
           <div className="min-h-screen bg-gray-50">

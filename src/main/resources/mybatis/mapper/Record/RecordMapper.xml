@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.RecordMapper">
+
+    <insert id="insertRecord">
+        INSERT INTO record (user_id, activity_id, prize_name, prize_type)
+        VALUES (#{userId}, #{activityId}, #{prizeName}, #{prizeType})
+    </insert>
+
+    <select id="selectByUserId" resultType="map">
+        SELECT * FROM record WHERE user_id = #{userId} ORDER BY create_time DESC
+    </select>
+
+    <select id="leaderboard" resultType="map">
+        SELECT u.username, r.prize_name, r.create_time
+        FROM record r
+                 JOIN sys_user u ON r.user_id = u.id
+        WHERE r.prize_type = 1
+        ORDER BY r.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
