@@ -93,4 +93,12 @@ public class UserService {
 
         return "Success! You got 50 points, and " + inviterName + " got 100 points.";
     }
+
+    public long getPoints(long userId) {
+        Long points = userMapper.selectPointsById(userId);
+        if (points == null) {
+            throw new BusinessException(404, "user not found: " + userId);
+        }
+        return points;
+    }
 }

@@ -16,6 +16,9 @@
     <select id="selectByInviteCode" resultType="map">
         SELECT id, username FROM sys_user WHERE invite_code = #{inviteCode}
     </select>
+    <select id="selectPointsById" resultType="long">
+        SELECT points FROM sys_user WHERE id = #{id}
+    </select>
 
     <update id="addPoints">
         UPDATE sys_user SET points = points + #{delta} WHERE id = #{id}

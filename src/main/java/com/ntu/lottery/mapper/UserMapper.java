@@ -20,4 +20,5 @@ public interface UserMapper {
                       @Param("today") LocalDate today);
 
     int deductPointsGuard(@Param("id") Long id, @Param("cost") Integer cost);
+    long selectPointsById(@Param("id") Long id);
 }

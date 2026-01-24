@@ -1,6 +1,7 @@
 package com.ntu.lottery.controller;
 
 import com.ntu.lottery.common.ApiResponse;
+import com.ntu.lottery.common.BusinessException;
 import com.ntu.lottery.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,5 +38,13 @@ public class UserController {
     @GetMapping("/invite/submit")
     public ApiResponse<String> submitInviteCode(@RequestParam Long userId, @RequestParam String code) {
         return ApiResponse.ok(userService.submitInviteCode(userId, code));
+    }
+    @GetMapping("/points")
+    public ApiResponse<Long> points(@RequestParam Long userId) {
+        if (userId == null) {
+            throw new BusinessException(400, "userId is required");
+        }
+        long points = userService.getPoints(userId);
+        return ApiResponse.ok(points);
     }
 }
