@@ -28,4 +28,13 @@ public class AdminController {
     ) {
         return ApiResponse.ok(adminService.updatePrize(id, stock, probability, pointCost));
     }
+
+    /**
+     * Preheat (assemble) activity cache into Redis.
+     * Example: /api/admin/assemble?activityId=1
+     */
+    @GetMapping("/assemble")
+    public ApiResponse<String> assemble(@RequestParam Long activityId) {
+        return ApiResponse.ok(adminService.assemble(activityId));
+    }
 }

@@ -29,14 +29,6 @@ public class UserController {
         return ApiResponse.ok(userService.getHistory(userId));
     }
 
-    /**
-     * Query current user points.
-     */
-    @GetMapping("/points")
-    public ApiResponse<Integer> points(@RequestParam Long userId) {
-        return ApiResponse.ok(userService.getPoints(userId));
-    }
-
     @GetMapping("/leaderboard")
     public ApiResponse<List<Map<String, Object>>> leaderboard(@RequestParam(required = false, defaultValue = "10") Integer limit) {
         return ApiResponse.ok(userService.leaderboard(limit));

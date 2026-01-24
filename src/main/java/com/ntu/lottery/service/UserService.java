@@ -41,21 +41,15 @@ public class UserService {
         }
 
         int rows = userMapper.updateCheckin(userId, rewardPoints, today);
-        // Guarded update: if two requests race, only one will update successfully.
-        if (rows <= 0) throw new BusinessException(409, "Failed: You have already checked in today!");
+        if (rows <= 0) {
+            throw new BusinessException(500, "Check-in failed");
+        }
         return "Success! +" + rewardPoints + " Points added.";
     }
 
     public List<Map<String, Object>> getHistory(Long userId) {
         if (userId == null) throw new BusinessException(400, "userId is required");
         return recordMapper.selectByUserId(userId);
-    }
-
-    public Integer getPoints(Long userId) {
-        if (userId == null) throw new BusinessException(400, "userId is required");
-        Integer points = userMapper.selectPoints(userId);
-        if (points == null) throw new BusinessException(404, "User not found");
-        return points;
     }
 
     public List<Map<String, Object>> leaderboard(int limit) {

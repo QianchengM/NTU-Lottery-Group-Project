@@ -26,7 +26,6 @@
         SET points = points + #{rewardPoints},
             last_checkin_date = #{today}
         WHERE id = #{id}
-          AND (last_checkin_date IS NULL OR last_checkin_date &lt;&gt; #{today})
     </update>
 
     <update id="deductPointsGuard">

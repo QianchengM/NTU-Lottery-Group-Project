@@ -11,6 +11,9 @@ public class AdminService {
     @Autowired
     private PrizeMapper prizeMapper;
 
+    @Autowired
+    private LotteryAssembleService assembleService;
+
     /**
      * Partial update: only update fields that are not null.
      */
@@ -25,5 +28,13 @@ public class AdminService {
             throw new BusinessException(404, "Prize not found: id=" + id);
         }
         return "Update Success";
+    }
+
+    /**
+     * Preheat (assemble) the activity's cached configs/stock/rate-table into Redis.
+     */
+    public String assemble(Long activityId) {
+        assembleService.assembleActivity(activityId);
+        return "Assembled activityId=" + activityId;
     }
 }

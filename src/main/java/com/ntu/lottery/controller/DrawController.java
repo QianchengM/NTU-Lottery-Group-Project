@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-// src/main/java/com/ntu/lottery/controller/DrawController.java
 @RestController
 @RequestMapping("/api")
 public class DrawController {
