@@ -2,6 +2,7 @@ package com.ntu.lottery.service;
 
 import com.ntu.lottery.common.BusinessException;
 import com.ntu.lottery.common.RedisKeys;
+import com.ntu.lottery.mapper.ActivityMapper;
 import com.ntu.lottery.mapper.PrizeMapper;
 import com.ntu.lottery.mapper.RecordMapper;
 import com.ntu.lottery.service.dto.PrizeConfig;
@@ -16,13 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 // src/main/java/com/ntu/lottery/service/LotteryService.java
 @Service
 public class LotteryService {
     @Autowired
     private PrizeMapper prizeMapper;
+
+    @Autowired
+    private ActivityMapper activityMapper;
 
     @Autowired
     private RecordMapper recordMapper;
@@ -32,6 +38,10 @@ public class LotteryService {
 
     @Autowired
     private LotteryAssembleService assembleService;
+
+    @Autowired
+    private PointsService pointsService;
+
 
     public List<Map<String, Object>> listPrizes(Long activityId) {
         if (activityId == null) {
@@ -45,6 +55,10 @@ public class LotteryService {
         if (userId == null || activityId == null) {
             throw new BusinessException(400, "userId/activityId is required");
         }
+
+        // 0) Deduct points (DB source of truth) + write ledger
+        int cost = getDrawCost(activityId);
+        pointsService.deductForDraw(userId, activityId, cost);
 
         // 1) Ensure cache is ready (assemble-on-demand)
         ensureAssembled(activityId);
@@ -119,6 +133,23 @@ public class LotteryService {
 
     private Integer getRange(Long activityId) {
         return (Integer) redissonClient.getBucket(RedisKeys.rateTableRange(activityId)).get();
+    }
+
+    /**
+     * Get per-activity draw cost from Redis cache (fallback to DB).
+     * DB is the source of truth.
+     */
+    private int getDrawCost(Long activityId) {
+        RBucket<Integer> bucket = redissonClient.getBucket(RedisKeys.drawCost(activityId));
+        Integer cached = bucket.get();
+        if (cached != null) {
+            return Math.max(0, cached);
+        }
+        Integer db = activityMapper.selectDrawCost(activityId);
+        int cost = db == null ? 0 : Math.max(0, db);
+        // Cache for a short time to reduce DB pressure during high QPS
+        bucket.set(cost, 10, TimeUnit.MINUTES);
+        return cost;
     }
 
     /**
