@@ -27,6 +27,11 @@ public final class RedisKeys {
         return "lottery:activity:" + activityId + ":rate:range";
     }
 
+    // Draw cost cache (source of truth: DB `activity.draw_cost`)
+    public static String drawCost(Long activityId) {
+        return "lottery:activity:" + activityId + ":draw:cost";
+    }
+
     // Prize stock counter (atomic)
     public static String prizeStock(Long prizeId) {
         return "lottery:prize:" + prizeId + ":stock";

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS activity (
                                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
                                         name VARCHAR(128) NOT NULL,
     status TINYINT NOT NULL DEFAULT 1, -- 1: active, 0: inactive
+    draw_cost INT NOT NULL DEFAULT 0, -- 每次抽奖消耗积分（可按活动配置）
     start_time DATETIME NULL,
     end_time DATETIME NULL,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -77,6 +78,21 @@ CREATE TABLE IF NOT EXISTS user_invite (
     KEY idx_user_invite_inviter_id (inviter_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------- 6) Points Ledger (audit) ----------
+-- 每次积分变动都记录一笔流水，便于对账/幂等/补偿
+CREATE TABLE IF NOT EXISTS points_ledger (
+                                             id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                             user_id BIGINT NOT NULL,
+                                             biz_type VARCHAR(32) NOT NULL,
+    biz_id VARCHAR(64) NOT NULL,
+    delta INT NOT NULL,
+    balance_after INT NOT NULL,
+    remark VARCHAR(255) NULL,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_points_ledger_biz (biz_type, biz_id),
+    KEY idx_points_ledger_user (user_id, create_time)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =========================================================
 -- Seed Data (safe re-run: truncate then insert)
 -- =========================================================
@@ -86,12 +102,13 @@ TRUNCATE TABLE record;
 TRUNCATE TABLE prize;
 TRUNCATE TABLE sys_user;
 TRUNCATE TABLE activity;
+TRUNCATE TABLE points_ledger;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 1) Activity
-INSERT INTO activity (id, name, status, start_time, end_time)
+INSERT INTO activity (id, name, status, draw_cost, start_time, end_time)
 VALUES
-    (1, 'NTU Lottery Demo Activity', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY));
+    (1, 'NTU Lottery Demo Activity', 1, 10, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY));
 
 -- 2) Users
 INSERT INTO sys_user (id, username, points, last_checkin_date, invite_code)
