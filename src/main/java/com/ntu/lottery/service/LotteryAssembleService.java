@@ -2,6 +2,12 @@ package com.ntu.lottery.service;
 
 import com.ntu.lottery.common.BusinessException;
 import com.ntu.lottery.common.RedisKeys;
+import com.ntu.lottery.entity.ActivitySku;
+import com.ntu.lottery.entity.ActivityWeightPrize;
+import com.ntu.lottery.entity.ActivityWeightRule;
+import com.ntu.lottery.mapper.ActivitySkuMapper;
+import com.ntu.lottery.mapper.ActivityWeightPrizeMapper;
+import com.ntu.lottery.mapper.ActivityWeightRuleMapper;
 import com.ntu.lottery.mapper.PrizeMapper;
 import com.ntu.lottery.service.dto.PrizeConfig;
 import org.redisson.api.*;
@@ -23,10 +29,20 @@ import java.util.concurrent.TimeUnit;
 public class LotteryAssembleService {
 
     private final PrizeMapper prizeMapper;
+    private final ActivitySkuMapper activitySkuMapper;
+    private final ActivityWeightRuleMapper activityWeightRuleMapper;
+    private final ActivityWeightPrizeMapper activityWeightPrizeMapper;
     private final RedissonClient redissonClient;
 
-    public LotteryAssembleService(PrizeMapper prizeMapper, RedissonClient redissonClient) {
+    public LotteryAssembleService(PrizeMapper prizeMapper,
+                                  ActivitySkuMapper activitySkuMapper,
+                                  ActivityWeightRuleMapper activityWeightRuleMapper,
+                                  ActivityWeightPrizeMapper activityWeightPrizeMapper,
+                                  RedissonClient redissonClient) {
         this.prizeMapper = prizeMapper;
+        this.activitySkuMapper = activitySkuMapper;
+        this.activityWeightRuleMapper = activityWeightRuleMapper;
+        this.activityWeightPrizeMapper = activityWeightPrizeMapper;
         this.redissonClient = redissonClient;
     }
 
@@ -54,7 +70,7 @@ public class LotteryAssembleService {
                 throw new BusinessException(404, "No prizes configured for activityId=" + activityId);
             }
 
-            // 1) Prize config map
+            // 1) Prize config map (contains skuId)
             Map<Long, PrizeConfig> cfgMap = new HashMap<>();
             for (Map<String, Object> r : rows) {
                 PrizeConfig c = toConfig(r);
@@ -66,25 +82,55 @@ public class LotteryAssembleService {
             redisCfg.clear();
             redisCfg.putAll(cfgMap);
 
-            // 2) Prize stock counters (atomic)
-            for (PrizeConfig c : cfgMap.values()) {
-                if (c.getType() != null && c.getType() != 0) {
-                    long stock = c.getStock() == null ? 0L : Math.max(c.getStock(), 0);
-                    RAtomicLong counter = redissonClient.getAtomicLong(RedisKeys.prizeStock(c.getId()));
-                    counter.set(stock);
+            // 2) SKU stock counters (atomic)
+            List<ActivitySku> skuList = activitySkuMapper.selectByActivityId(activityId);
+            if (skuList != null) {
+                for (ActivitySku sku : skuList) {
+                    long total = sku.getStockTotal() == null ? 0L : Math.max(0, sku.getStockTotal());
+                    long month = sku.getStockMonth() == null ? 0L : Math.max(0, sku.getStockMonth());
+                    long day = sku.getStockDay() == null ? 0L : Math.max(0, sku.getStockDay());
+                    redissonClient.getAtomicLong(RedisKeys.skuStockTotal(activityId, sku.getSkuId())).set(total);
+                    redissonClient.getAtomicLong(RedisKeys.skuStockMonth(activityId, sku.getSkuId())).set(month);
+                    redissonClient.getAtomicLong(RedisKeys.skuStockDay(activityId, sku.getSkuId())).set(day);
                 }
             }
 
-            // 3) Probability lookup table (core algorithm)
-            ProbabilityTable table = buildProbabilityTable(cfgMap.values());
+            // 3) Probability lookup table (default strategy)
+            ProbabilityTable table = buildProbabilityTable(cfgMap.values(), null);
 
             // store range
-            redissonClient.getBucket(RedisKeys.rateTableRange(activityId)).set(table.range);
+            redissonClient.getBucket(RedisKeys.rateTableRange(activityId, "default")).set(table.range);
 
             // store list
-            RList<Long> rList = redissonClient.getList(RedisKeys.rateTable(activityId));
+            RList<Long> rList = redissonClient.getList(RedisKeys.rateTable(activityId, "default"));
             rList.clear();
             rList.addAll(table.indexToPrizeId);
+
+            // 4) Weight rule tables
+            List<ActivityWeightRule> rules = activityWeightRuleMapper.selectByActivityId(activityId);
+            if (rules != null) {
+                for (ActivityWeightRule rule : rules) {
+                    List<ActivityWeightPrize> weights = activityWeightPrizeMapper.selectByRuleId(rule.getId());
+                    Map<Long, Integer> weightMap = new HashMap<>();
+                    if (weights != null) {
+                        for (ActivityWeightPrize w : weights) {
+                            if (w.getPrizeId() != null && w.getWeight() != null) {
+                                weightMap.put(w.getPrizeId(), Math.max(0, w.getWeight()));
+                            }
+                        }
+                    }
+                    if (weightMap.isEmpty()) {
+                        continue;
+                    }
+                    ProbabilityTable ruleTable = buildProbabilityTable(cfgMap.values(), weightMap);
+                    String strategyKey = "rule:" + rule.getId();
+                    redissonClient.getBucket(RedisKeys.rateTableRange(activityId, strategyKey))
+                            .set(ruleTable.range);
+                    RList<Long> list = redissonClient.getList(RedisKeys.rateTable(activityId, strategyKey));
+                    list.clear();
+                    list.addAll(ruleTable.indexToPrizeId);
+                }
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -111,9 +157,15 @@ public class LotteryAssembleService {
      * - then trim/pad to exactly `range`
      * - shuffle
      */
-    private ProbabilityTable buildProbabilityTable(Collection<PrizeConfig> prizes) {
+    private ProbabilityTable buildProbabilityTable(Collection<PrizeConfig> prizes, Map<Long, Integer> weights) {
         List<PrizeConfig> valid = prizes.stream()
-                .filter(p -> p.getProbability() != null && p.getProbability() > 0)
+                .filter(p -> {
+                    if (weights == null) {
+                        return p.getProbability() != null && p.getProbability() > 0;
+                    }
+                    Integer w = weights.get(p.getId());
+                    return w != null && w > 0;
+                })
                 .toList();
         if (valid.isEmpty()) {
             throw new BusinessException(500, "Invalid probability config: all probabilities are null/<=0");
@@ -122,7 +174,8 @@ public class LotteryAssembleService {
         BigDecimal min = null;
         BigDecimal total = BigDecimal.ZERO;
         for (PrizeConfig p : valid) {
-            BigDecimal prob = BigDecimal.valueOf(p.getProbability());
+            int v = weights == null ? p.getProbability() : weights.get(p.getId());
+            BigDecimal prob = BigDecimal.valueOf(v);
             total = total.add(prob);
             if (min == null || prob.compareTo(min) < 0) {
                 min = prob;
@@ -146,7 +199,8 @@ public class LotteryAssembleService {
 
         List<Long> table = new ArrayList<>(range);
         for (PrizeConfig p : valid) {
-            BigDecimal prob = BigDecimal.valueOf(p.getProbability());
+            int v = weights == null ? p.getProbability() : weights.get(p.getId());
+            BigDecimal prob = BigDecimal.valueOf(v);
             int slots = prob.divide(min, 0, RoundingMode.UP).intValue();
             for (int i = 0; i < slots; i++) {
                 table.add(p.getId());
@@ -178,6 +232,7 @@ public class LotteryAssembleService {
         c.setStock(r.get("stock") == null ? 0 : ((Number) r.get("stock")).intValue());
         c.setProbability(r.get("probability") == null ? 0 : ((Number) r.get("probability")).intValue());
         c.setPointCost(r.get("point_cost") == null ? null : ((Number) r.get("point_cost")).intValue());
+        c.setSkuId(r.get("sku_id") == null ? null : ((Number) r.get("sku_id")).longValue());
         return c;
     }
 

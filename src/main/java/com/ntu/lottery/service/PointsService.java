@@ -58,4 +58,25 @@ public class PointsService {
         );
         return bizId;
     }
+
+    /**
+     * Add points for rebate and write ledger (idempotent by bizType+bizId).
+     */
+    @Transactional
+    public void addForRebate(Long userId, Long activityId, Integer amount, String bizId) {
+        if (userId == null || amount == null || amount <= 0) return;
+        if (bizId == null) {
+            throw new BusinessException(400, "rebate bizId is required");
+        }
+        userMapper.addPoints(userId, amount);
+        int balanceAfter = (int) userMapper.selectPointsById(userId);
+        pointsLedgerMapper.insertLedger(
+                userId,
+                "REBATE",
+                bizId,
+                amount,
+                balanceAfter,
+                "activityId=" + activityId
+        );
+    }
 }

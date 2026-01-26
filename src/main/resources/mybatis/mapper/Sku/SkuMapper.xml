@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.SkuMapper">
+
+    <select id="selectById" resultType="com.ntu.lottery.entity.Sku">
+        SELECT id,
+               sku_code AS skuCode,
+               name
+        FROM sku
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultType="com.ntu.lottery.entity.Sku">
+        SELECT id,
+               sku_code AS skuCode,
+               name
+        FROM sku
+    </select>
+
+</mapper>

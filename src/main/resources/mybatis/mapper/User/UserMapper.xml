@@ -20,6 +20,12 @@
         SELECT points FROM sys_user WHERE id = #{id}
     </select>
 
+    <select id="selectPointsAndLevel" resultType="map">
+        SELECT points, level
+        FROM sys_user
+        WHERE id = #{id}
+    </select>
+
     <update id="addPoints">
         UPDATE sys_user SET points = points + #{delta} WHERE id = #{id}
     </update>

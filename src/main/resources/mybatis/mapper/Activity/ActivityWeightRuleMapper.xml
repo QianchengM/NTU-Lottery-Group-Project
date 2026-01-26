@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.ActivityWeightRuleMapper">
+
+    <select id="selectByActivityId" resultType="com.ntu.lottery.entity.ActivityWeightRule">
+        SELECT id,
+               activity_id AS `activityId`,
+               rule_code AS `ruleCode`,
+               rule_name AS `ruleName`,
+               rule_type AS `ruleType`,
+               min_value AS `minValue`,
+               max_value AS `maxValue`,
+               priority
+        FROM activity_weight_rule
+        WHERE activity_id = #{activityId}
+        ORDER BY priority DESC, id ASC
+    </select>
+
+</mapper>

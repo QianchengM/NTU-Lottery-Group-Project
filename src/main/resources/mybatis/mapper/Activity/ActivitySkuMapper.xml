@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.ActivitySkuMapper">
+
+    <select id="selectByActivityId" resultType="com.ntu.lottery.entity.ActivitySku">
+        SELECT id,
+               activity_id AS activityId,
+               sku_id AS skuId,
+               stock_total AS stockTotal,
+               stock_month AS stockMonth,
+               stock_day AS stockDay,
+               create_time AS createTime,
+               update_time AS updateTime
+        FROM activity_sku
+        WHERE activity_id = #{activityId}
+    </select>
+
+    <update id="deductStock">
+        UPDATE activity_sku
+        SET stock_total = stock_total - 1,
+            stock_month = stock_month - 1,
+            stock_day = stock_day - 1
+        WHERE activity_id = #{activityId}
+          AND sku_id = #{skuId}
+          AND stock_total > 0
+          AND stock_month > 0
+          AND stock_day > 0
+    </update>
+
+    <update id="updateStockToZero">
+        UPDATE activity_sku
+        <set>
+            <choose>
+                <when test="level == 'TOTAL'">stock_total = 0,</when>
+                <when test="level == 'MONTH'">stock_month = 0,</when>
+                <when test="level == 'DAY'">stock_day = 0,</when>
+                <otherwise>stock_total = stock_total</otherwise>
+            </choose>
+        </set>
+        WHERE activity_id = #{activityId}
+          AND sku_id = #{skuId}
+    </update>
+
+</mapper>

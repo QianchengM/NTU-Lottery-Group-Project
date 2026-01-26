@@ -11,4 +11,16 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectConfig" resultType="com.ntu.lottery.entity.ActivityConfig">
+        SELECT id,
+               status,
+               draw_cost AS drawCost,
+               daily_draw_limit AS dailyDrawLimit,
+               fallback_prize_id AS fallbackPrizeId,
+               start_time AS startTime,
+               end_time AS endTime
+        FROM activity
+        WHERE id = #{id}
+    </select>
+
 </mapper>

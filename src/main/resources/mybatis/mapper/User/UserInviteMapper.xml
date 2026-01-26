@@ -12,4 +12,11 @@
         WHERE NOT EXISTS (SELECT 1 FROM user_invite WHERE user_id = #{userId})
     </insert>
 
+    <select id="selectInviterId" resultType="long">
+        SELECT inviter_id
+        FROM user_invite
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
 </mapper>

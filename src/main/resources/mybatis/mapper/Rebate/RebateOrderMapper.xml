@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.RebateOrderMapper">
+
+    <select id="selectByBizId" resultType="com.ntu.lottery.entity.RebateOrder">
+        SELECT id,
+               user_id AS userId,
+               inviter_id AS inviterId,
+               activity_id AS activityId,
+               rebate_type AS rebateType,
+               rebate_value AS rebateValue,
+               biz_id AS bizId,
+               state,
+               create_time AS createTime
+        FROM rebate_order
+        WHERE biz_id = #{bizId}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.ntu.lottery.entity.RebateOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO rebate_order (user_id, inviter_id, activity_id, rebate_type, rebate_value, biz_id, state)
+        VALUES (#{userId}, #{inviterId}, #{activityId}, #{rebateType}, #{rebateValue}, #{bizId}, #{state})
+    </insert>
+
+</mapper>

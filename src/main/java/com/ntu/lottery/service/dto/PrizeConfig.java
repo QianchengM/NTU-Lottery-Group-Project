@@ -7,6 +7,7 @@ public class PrizeConfig {
     private Long id;
     private Long activityId;
     private String name;
+    private Long skuId;
     /**
      * 0 = "thanks" (non-stock), !=0 = real prize (has stock)
      */
@@ -40,6 +41,14 @@ public class PrizeConfig {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Long getSkuId() {
+        return skuId;
+    }
+
+    public void setSkuId(Long skuId) {
+        this.skuId = skuId;
     }
 
     public Integer getType() {

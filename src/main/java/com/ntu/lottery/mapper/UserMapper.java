@@ -21,4 +21,6 @@ public interface UserMapper {
 
     int deductPointsGuard(@Param("id") Long id, @Param("cost") Integer cost);
     long selectPointsById(@Param("id") Long id);
+
+    Map<String, Object> selectPointsAndLevel(@Param("id") Long id);
 }

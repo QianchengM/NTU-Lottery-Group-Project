@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.RiskBlacklistMapper">
+
+    <select id="selectByUserId" resultType="com.ntu.lottery.entity.RiskBlacklist">
+        SELECT id,
+               user_id AS userId,
+               reason,
+               create_time AS createTime
+        FROM risk_blacklist
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+</mapper>

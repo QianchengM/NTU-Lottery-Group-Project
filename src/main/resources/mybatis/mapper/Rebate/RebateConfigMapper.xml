@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ntu.lottery.mapper.RebateConfigMapper">
+
+    <select id="selectByActivityId" resultType="com.ntu.lottery.entity.RebateConfig">
+        SELECT id,
+               activity_id AS activityId,
+               rebate_type AS rebateType,
+               rebate_value AS rebateValue,
+               status
+        FROM rebate_config
+        WHERE activity_id = #{activityId}
+        LIMIT 1
+    </select>
+
+</mapper>

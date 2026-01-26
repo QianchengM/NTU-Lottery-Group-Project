@@ -1,5 +1,6 @@
 package com.ntu.lottery.mapper;
 
+import com.ntu.lottery.entity.ActivityConfig;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -10,4 +11,6 @@ import org.apache.ibatis.annotations.Param;
 public interface ActivityMapper {
 
     Integer selectDrawCost(@Param("id") Long activityId);
+
+    ActivityConfig selectConfig(@Param("id") Long activityId);
 }
