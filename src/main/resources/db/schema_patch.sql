@@ -174,6 +174,73 @@ CREATE TABLE IF NOT EXISTS user_award_order (
     UNIQUE KEY uk_award_take (take_biz_id),
     KEY idx_award_user (user_id, create_time)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- ==============================
+-- 12) Activity Weight Rule
+-- ==============================
+CREATE TABLE IF NOT EXISTS activity_weight_rule (
+                                                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                                     activity_id BIGINT NOT NULL,
+                                                     rule_code VARCHAR(64) NOT NULL,
+    rule_name VARCHAR(128) NOT NULL,
+    rule_type VARCHAR(16) NOT NULL, -- POINTS / LEVEL
+    min_value INT NOT NULL DEFAULT 0,
+    max_value INT NOT NULL DEFAULT 2147483647,
+    priority INT NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_weight_activity (activity_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==============================
+-- 13) Activity Weight Prize
+-- ==============================
+CREATE TABLE IF NOT EXISTS activity_weight_prize (
+                                                      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                                      rule_id BIGINT NOT NULL,
+                                                      prize_id BIGINT NOT NULL,
+                                                      weight INT NOT NULL DEFAULT 0,
+                                                      KEY idx_weight_rule (rule_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==============================
+-- 14) Risk Blacklist
+-- ==============================
+CREATE TABLE IF NOT EXISTS risk_blacklist (
+                                              id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                              user_id BIGINT NOT NULL,
+                                              reason VARCHAR(255) NULL,
+                                              create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                              UNIQUE KEY uk_blacklist_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==============================
+-- 15) Rebate Config
+-- ==============================
+CREATE TABLE IF NOT EXISTS rebate_config (
+                                             id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                             activity_id BIGINT NOT NULL,
+                                             rebate_type VARCHAR(16) NOT NULL, -- POINTS
+    rebate_value INT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_rebate_activity (activity_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==============================
+-- 16) Rebate Order
+-- ==============================
+CREATE TABLE IF NOT EXISTS rebate_order (
+                                            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                                            user_id BIGINT NOT NULL,
+                                            inviter_id BIGINT NOT NULL,
+                                            activity_id BIGINT NOT NULL,
+                                            rebate_type VARCHAR(16) NOT NULL,
+                                            rebate_value INT NOT NULL,
+                                            biz_id VARCHAR(64) NOT NULL,
+                                            state VARCHAR(16) NOT NULL,
+                                            create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            UNIQUE KEY uk_rebate_biz (biz_id),
+    KEY idx_rebate_user (user_id, create_time)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- =========================================================
@@ -266,70 +333,3 @@ VALUES
     (1, 1, 'NTU Hoodie',         1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
     (2, 1, '10 Points Coupon',   2, DATE_SUB(NOW(), INTERVAL 3 HOUR)),
     (3, 1, '谢谢参与',           0, DATE_SUB(NOW(), INTERVAL 1 HOUR));
--- ==============================
--- 12) Activity Weight Rule
--- ==============================
-CREATE TABLE IF NOT EXISTS activity_weight_rule (
-                                                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                                     activity_id BIGINT NOT NULL,
-                                                     rule_code VARCHAR(64) NOT NULL,
-    rule_name VARCHAR(128) NOT NULL,
-    rule_type VARCHAR(16) NOT NULL, -- POINTS / LEVEL
-    min_value INT NOT NULL DEFAULT 0,
-    max_value INT NOT NULL DEFAULT 2147483647,
-    priority INT NOT NULL DEFAULT 0,
-    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    KEY idx_weight_activity (activity_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ==============================
--- 13) Activity Weight Prize
--- ==============================
-CREATE TABLE IF NOT EXISTS activity_weight_prize (
-                                                      id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                                      rule_id BIGINT NOT NULL,
-                                                      prize_id BIGINT NOT NULL,
-                                                      weight INT NOT NULL DEFAULT 0,
-                                                      KEY idx_weight_rule (rule_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ==============================
--- 14) Risk Blacklist
--- ==============================
-CREATE TABLE IF NOT EXISTS risk_blacklist (
-                                              id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                              user_id BIGINT NOT NULL,
-                                              reason VARCHAR(255) NULL,
-                                              create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                              UNIQUE KEY uk_blacklist_user (user_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ==============================
--- 15) Rebate Config
--- ==============================
-CREATE TABLE IF NOT EXISTS rebate_config (
-                                             id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                             activity_id BIGINT NOT NULL,
-                                             rebate_type VARCHAR(16) NOT NULL, -- POINTS
-    rebate_value INT NOT NULL DEFAULT 0,
-    status TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_rebate_activity (activity_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ==============================
--- 16) Rebate Order
--- ==============================
-CREATE TABLE IF NOT EXISTS rebate_order (
-                                            id BIGINT PRIMARY KEY AUTO_INCREMENT,
-                                            user_id BIGINT NOT NULL,
-                                            inviter_id BIGINT NOT NULL,
-                                            activity_id BIGINT NOT NULL,
-                                            rebate_type VARCHAR(16) NOT NULL,
-                                            rebate_value INT NOT NULL,
-                                            biz_id VARCHAR(64) NOT NULL,
-                                            state VARCHAR(16) NOT NULL,
-                                            create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                            UNIQUE KEY uk_rebate_biz (biz_id),
-    KEY idx_rebate_user (user_id, create_time)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
