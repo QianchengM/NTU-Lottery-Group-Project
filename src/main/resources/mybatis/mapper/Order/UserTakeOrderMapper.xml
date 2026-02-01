@@ -26,7 +26,22 @@
         UPDATE user_take_order
         SET state='USED'
         WHERE biz_id = #{bizId}
-          AND state='CREATE'
+          AND state='PROCESSING'
     </update>
+
+    <select id="scanProcessingTimeout" resultType="com.ntu.lottery.entity.UserTakeOrder">
+        SELECT id,
+               user_id AS userId,
+               activity_id AS activityId,
+               biz_id AS bizId,
+               state,
+               create_time AS createTime,
+               update_time AS updateTime
+        FROM user_take_order
+        WHERE state='PROCESSING'
+          AND create_time &lt;= #{beforeTime}
+        ORDER BY create_time ASC
+        LIMIT #{limit}
+    </select>
 
 </mapper>

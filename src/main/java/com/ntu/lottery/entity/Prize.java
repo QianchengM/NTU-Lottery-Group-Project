@@ -9,6 +9,7 @@ public class Prize {
     private String name;
     private Integer stock;
     private Integer probability;
+    private java.math.BigDecimal probabilityDecimal;
     private Integer type; // 0:谢谢惠顾, 1:实物, 2:虚拟券
     private Integer activityId;
     private Long skuId;

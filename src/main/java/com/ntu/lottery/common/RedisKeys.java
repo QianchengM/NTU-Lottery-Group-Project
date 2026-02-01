@@ -23,6 +23,12 @@ public final class RedisKeys {
         return "lottery:activity:" + activityId + ":rate:table:" + key;
     }
 
+    // Probability lookup table (index -> prizeId map)
+    public static String rateTableMap(Long activityId, String strategyKey) {
+        String key = strategyKey == null ? "default" : strategyKey;
+        return "lottery:activity:" + activityId + ":rate:map:" + key;
+    }
+
     // Probability table length (range)
     public static String rateTableRange(Long activityId, String strategyKey) {
         String key = strategyKey == null ? "default" : strategyKey;
@@ -60,5 +66,15 @@ public final class RedisKeys {
     // Distributed lock for SKU stock deduction
     public static String skuStockLock(Long activityId, Long skuId) {
         return "lottery:lock:activity:" + activityId + ":sku:" + skuId;
+    }
+
+    // Prize lock to prevent duplicate wins (user + prize)
+    public static String prizeUserLock(Long activityId, Long userId, Long prizeId) {
+        return "lottery:lock:activity:" + activityId + ":user:" + userId + ":prize:" + prizeId;
+    }
+
+    // Reward idempotency key
+    public static String rewardDedupKey(String outBizNo) {
+        return "lottery:reward:dedupe:" + outBizNo;
     }
 }

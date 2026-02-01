@@ -17,6 +17,10 @@ public class PrizeConfig {
      * Probability in the same unit as DB (e.g. sum to 100)
      */
     private Integer probability;
+    /**
+     * High-precision probability (preferred when present).
+     */
+    private java.math.BigDecimal probabilityDecimal;
     private Integer pointCost;
 
     public Long getId() {
@@ -73,6 +77,14 @@ public class PrizeConfig {
 
     public void setProbability(Integer probability) {
         this.probability = probability;
+    }
+
+    public java.math.BigDecimal getProbabilityDecimal() {
+        return probabilityDecimal;
+    }
+
+    public void setProbabilityDecimal(java.math.BigDecimal probabilityDecimal) {
+        this.probabilityDecimal = probabilityDecimal;
     }
 
     public Integer getPointCost() {

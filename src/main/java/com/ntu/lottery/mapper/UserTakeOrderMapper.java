@@ -9,6 +9,9 @@ public interface UserTakeOrderMapper {
 
     int insert(UserTakeOrder order);
 
-    /** 只允许 CREATE -> USED，返回 1 表示成功，0 表示已被消费/不存在 */
+    /** 只允许 PROCESSING -> USED，返回 1 表示成功，0 表示已被消费/不存在 */
     int markUsed(@Param("bizId") String bizId);
+
+    java.util.List<UserTakeOrder> scanProcessingTimeout(@Param("beforeTime") java.time.LocalDateTime beforeTime,
+                                                        @Param("limit") int limit);
 }

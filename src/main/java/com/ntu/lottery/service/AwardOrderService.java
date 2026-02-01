@@ -35,7 +35,7 @@ public class AwardOrderService {
      * 本地事务B：
      * 1) 保存中奖订单 user_award_order（幂等）
      * 2) 写 Task(outbox) 并 publish event（提交后发 MQ）
-     * 3) 更新参与订单 user_take_order = USED（仅允许 CREATE->USED）
+     * 3) 更新参与订单 user_take_order = USED（仅允许 PROCESSING->USED）
      */
     @Transactional
     public Long saveAwardAndMarkUsed(Long userId,
@@ -110,7 +110,7 @@ public class AwardOrderService {
             }
         }
 
-        // 4) 更新参与订单为 USED（只允许 CREATE->USED）
+        // 4) 更新参与订单为 USED（只允许 PROCESSING->USED）
         int rows = userTakeOrderMapper.markUsed(takeBizId);
         if (rows <= 0) {
             // 走到这里通常意味着：订单已被 used（并发/重复请求）

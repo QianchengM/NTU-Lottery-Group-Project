@@ -1,23 +1,28 @@
 package com.ntu.lottery.service.stock;
 
 import com.ntu.lottery.common.RedisKeys;
+import com.ntu.lottery.service.stock.msg.StockDeductMsg;
 import com.ntu.lottery.service.stock.msg.StockZeroMsg;
-import org.redisson.api.RAtomicLong;
-import org.redisson.api.RLock;
+import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 @Service
 public class StockService {
 
     private final RedissonClient redissonClient;
     private final StockZeroProducer stockZeroProducer;
+    private final StockDeductProducer stockDeductProducer;
 
-    public StockService(RedissonClient redissonClient, StockZeroProducer stockZeroProducer) {
+    public StockService(RedissonClient redissonClient,
+                        StockZeroProducer stockZeroProducer,
+                        StockDeductProducer stockDeductProducer) {
         this.redissonClient = redissonClient;
         this.stockZeroProducer = stockZeroProducer;
+        this.stockDeductProducer = stockDeductProducer;
     }
 
     public boolean deductRedisStock(Long activityId, Long skuId) {
@@ -25,51 +30,53 @@ public class StockService {
             return true;
         }
 
-        RLock lock = redissonClient.getLock(RedisKeys.skuStockLock(activityId, skuId));
-        boolean locked = false;
-        try {
-            locked = lock.tryLock(100, 3_000, TimeUnit.MILLISECONDS);
-            if (!locked) {
-                return false;
-            }
+        String script = """
+                local t = tonumber(redis.call('get', KEYS[1]) or '0')
+                local m = tonumber(redis.call('get', KEYS[2]) or '0')
+                local d = tonumber(redis.call('get', KEYS[3]) or '0')
+                if t <= 0 or m <= 0 or d <= 0 then
+                    return {-1, t, m, d}
+                end
+                t = t - 1
+                m = m - 1
+                d = d - 1
+                redis.call('set', KEYS[1], t)
+                redis.call('set', KEYS[2], m)
+                redis.call('set', KEYS[3], d)
+                return {t, m, d}
+                """;
 
-            RAtomicLong total = redissonClient.getAtomicLong(RedisKeys.skuStockTotal(activityId, skuId));
-            RAtomicLong month = redissonClient.getAtomicLong(RedisKeys.skuStockMonth(activityId, skuId));
-            RAtomicLong day = redissonClient.getAtomicLong(RedisKeys.skuStockDay(activityId, skuId));
+        List<Object> res = redissonClient.getScript(StringCodec.INSTANCE)
+                .eval(RScript.Mode.READ_WRITE, script, RScript.ReturnType.MULTI,
+                        java.util.Arrays.asList(
+                                RedisKeys.skuStockTotal(activityId, skuId),
+                                RedisKeys.skuStockMonth(activityId, skuId),
+                                RedisKeys.skuStockDay(activityId, skuId)
+                        ));
 
-            long t = total.get();
-            long m = month.get();
-            long d = day.get();
-            if (t <= 0 || m <= 0 || d <= 0) {
-                return false;
-            }
-
-            long t2 = total.decrementAndGet();
-            long m2 = month.decrementAndGet();
-            long d2 = day.decrementAndGet();
-
-            if (t2 == 0) {
-                stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "TOTAL"));
-            }
-            if (m2 == 0) {
-                stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "MONTH"));
-            }
-            if (d2 == 0) {
-                stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "DAY"));
-            }
-
-            return t2 >= 0 && m2 >= 0 && d2 >= 0;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if (res == null || res.isEmpty()) {
             return false;
-        } finally {
-            if (locked) {
-                try {
-                    lock.unlock();
-                } catch (Exception ignore) {
-                }
-            }
         }
+        long t2 = toLong(res.get(0));
+        if (t2 < 0) {
+            return false;
+        }
+        long m2 = toLong(res.get(1));
+        long d2 = toLong(res.get(2));
+
+        if (t2 == 0) {
+            stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "TOTAL"));
+        }
+        if (m2 == 0) {
+            stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "MONTH"));
+        }
+        if (d2 == 0) {
+            stockZeroProducer.publish(new StockZeroMsg(activityId, skuId, "DAY"));
+        }
+
+        // Async DB sync via delay queue.
+        stockDeductProducer.publish(new StockDeductMsg(activityId, skuId, 1));
+        return true;
     }
 
     public void rollbackRedisStock(Long activityId, Long skuId) {
@@ -77,5 +84,13 @@ public class StockService {
         redissonClient.getAtomicLong(RedisKeys.skuStockTotal(activityId, skuId)).incrementAndGet();
         redissonClient.getAtomicLong(RedisKeys.skuStockMonth(activityId, skuId)).incrementAndGet();
         redissonClient.getAtomicLong(RedisKeys.skuStockDay(activityId, skuId)).incrementAndGet();
+    }
+
+    private long toLong(Object val) {
+        if (val == null) return 0L;
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        return Long.parseLong(val.toString());
     }
 }

@@ -9,7 +9,7 @@ public class UserTakeOrder {
     private Long userId;
     private Long activityId;
     private String bizId;     // 参与订单号
-    private String state;     // CREATE / USED
+    private String state;     // PROCESSING / USED
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

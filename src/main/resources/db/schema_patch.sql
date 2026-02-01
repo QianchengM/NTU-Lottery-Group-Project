@@ -69,14 +69,15 @@ CREATE TABLE IF NOT EXISTS activity_sku (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- 5) Prizes ----------
--- 对应代码：prize(id, name, sku_id, stock, probability, type, activity_id, point_cost)
+-- 对应代码：prize(id, name, sku_id, stock, probability, probability_decimal, type, activity_id, point_cost)
 CREATE TABLE IF NOT EXISTS prize (
                                      id BIGINT PRIMARY KEY AUTO_INCREMENT,
                                      activity_id BIGINT NOT NULL,
                                      sku_id BIGINT NULL,
                                      name VARCHAR(128) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
-    probability INT NOT NULL DEFAULT 0, -- 0~100，代码里默认按 100 计算
+    probability INT NOT NULL DEFAULT 0, -- 兼容旧字段
+    probability_decimal DECIMAL(20, 10) NULL, -- 高精度概率(0~1 或任意比例)
     type TINYINT NOT NULL DEFAULT 0,     -- 0:谢谢惠顾, 1:实物, 2:虚拟券
     point_cost INT NOT NULL DEFAULT 0,   -- 兑换商城用（>0 才会在 Mall 页面出现）
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -144,14 +145,14 @@ CREATE TABLE IF NOT EXISTS task_message (
                                             KEY idx_task_state_next (state, next_retry_time)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 -- ==============================
--- 10) user_take_order (事务A写入 create；事务B更新 used)
+-- 10) user_take_order (事务A写入 processing；事务B更新 used)
 -- ==============================
 CREATE TABLE IF NOT EXISTS user_take_order (
                                                id           BIGINT PRIMARY KEY AUTO_INCREMENT,
                                                user_id      BIGINT NOT NULL,
                                                activity_id  BIGINT NOT NULL,
                                                biz_id       VARCHAR(64) NOT NULL,   -- 参与订单号（幂等键，建议用雪花/UUID）
-    state        VARCHAR(16) NOT NULL,   -- CREATE / USED
+    state        VARCHAR(16) NOT NULL,   -- PROCESSING / USED
     create_time  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_take_biz (biz_id),
@@ -299,14 +300,14 @@ VALUES
     (5, 1, 5, 1000, 1000, 1000);
 
 -- 6) Prizes for activity_id = 1
--- probability 总和建议=100（你代码是 nextInt(100)+1）
-INSERT INTO prize (id, activity_id, sku_id, name, stock, probability, type, point_cost)
+-- probability_decimal 总和建议=1.0（高精度优先）
+INSERT INTO prize (id, activity_id, sku_id, name, stock, probability, probability_decimal, type, point_cost)
 VALUES
-    (1, 1, 1, '谢谢参与',        999999, 60, 0, 0),
-    (2, 1, 2, 'iPad mini',            2,  1, 1, 2500),
-    (3, 1, 3, 'NTU Hoodie',          10,  4, 1, 500),
-    (4, 1, 4, 'Coffee Voucher',     200, 15, 2, 50),
-    (5, 1, 5, '10 Points Coupon',   1000, 20, 2, 10);
+    (1, 1, 1, '谢谢参与',        999999, 60, 0.60, 0, 0),
+    (2, 1, 2, 'iPad mini',            2,  1, 0.01, 1, 2500),
+    (3, 1, 3, 'NTU Hoodie',          10,  4, 0.04, 1, 500),
+    (4, 1, 4, 'Coffee Voucher',     200, 15, 0.15, 2, 50),
+    (5, 1, 5, '10 Points Coupon',   1000, 20, 0.20, 2, 10);
 
 -- 7) Weight rules (optional demo)
 INSERT INTO activity_weight_rule (id, activity_id, rule_code, rule_name, rule_type, min_value, max_value, priority)

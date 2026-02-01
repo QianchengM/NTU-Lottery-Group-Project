@@ -4,7 +4,6 @@ import com.ntu.lottery.common.BusinessException;
 import com.ntu.lottery.entity.ActivityConfig;
 import com.ntu.lottery.entity.UserTakeOrder;
 import com.ntu.lottery.mapper.ActivityMapper;
-import com.ntu.lottery.mapper.ActivitySkuMapper;
 import com.ntu.lottery.mapper.UserTakeOrderMapper;
 import com.ntu.lottery.service.PointsService;
 import org.springframework.stereotype.Service;
@@ -17,16 +16,13 @@ import java.util.UUID;
 public class TakeOrderService {
 
     private final ActivityMapper activityMapper;
-    private final ActivitySkuMapper activitySkuMapper;
     private final UserTakeOrderMapper userTakeOrderMapper;
     private final PointsService pointsService;
 
     public TakeOrderService(ActivityMapper activityMapper,
-                            ActivitySkuMapper activitySkuMapper,
                             UserTakeOrderMapper userTakeOrderMapper,
                             PointsService pointsService) {
         this.activityMapper = activityMapper;
-        this.activitySkuMapper = activitySkuMapper;
         this.userTakeOrderMapper = userTakeOrderMapper;
         this.pointsService = pointsService;
     }
@@ -45,20 +41,13 @@ public class TakeOrderService {
             throw new BusinessException(403, "活动已结束");
         }
 
-        if (skuId != null) {
-            int rows = activitySkuMapper.deductStock(activityId, skuId);
-            if (rows <= 0) {
-                throw new BusinessException(409, "库存不足");
-            }
-        }
-
         pointsService.deductForDraw(userId, activityId, cost);
 
         UserTakeOrder order = new UserTakeOrder();
         order.setUserId(userId);
         order.setActivityId(activityId);
         order.setBizId("take:" + activityId + ":" + userId + ":" + UUID.randomUUID());
-        order.setState("CREATE");
+        order.setState("PROCESSING");
         userTakeOrderMapper.insert(order);
 
         return order.getBizId();

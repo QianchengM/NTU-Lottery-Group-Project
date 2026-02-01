@@ -22,6 +22,10 @@ public class MqTopicProperties {
     private String activitySkuStockZero;
     /** activity_sku_stock_zero_delay */
     private String activitySkuStockZeroDelay;
+    /** activity_sku_stock_deduct */
+    private String activitySkuStockDeduct;
+    /** activity_sku_stock_deduct_delay */
+    private String activitySkuStockDeductDelay;
 
     /** send_award */
     private String sendAward;

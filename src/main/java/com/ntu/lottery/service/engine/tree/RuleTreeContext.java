@@ -10,4 +10,6 @@ public class RuleTreeContext {
     private PrizeConfig prizeConfig;
     private Long fallbackPrizeId;
     private Integer dailyLimit;
+    private boolean prizeLockRequired;
+    private Integer prizeLockSeconds;
 }

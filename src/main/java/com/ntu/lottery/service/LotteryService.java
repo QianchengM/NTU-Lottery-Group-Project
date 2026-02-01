@@ -18,7 +18,6 @@ import com.ntu.lottery.service.dto.PrizeConfig;
 import com.ntu.lottery.service.order.TakeOrderService;
 import com.ntu.lottery.service.stock.StockService;
 import org.redisson.api.RBucket;
-import org.redisson.api.RList;
 import org.redisson.api.RMap;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +109,8 @@ public class LotteryService {
         treeCtx.setPrizeConfig(prize);
         treeCtx.setFallbackPrizeId(fallbackPrizeId);
         treeCtx.setDailyLimit(activity == null ? 0 : activity.getDailyDrawLimit());
+        treeCtx.setPrizeLockRequired(prize.getType() != null && prize.getType() != 0);
+        treeCtx.setPrizeLockSeconds(5);
 
         RuleTreeResult treeResult = ruleTreeEngine.evaluate(treeCtx);
         if (treeResult.getStatus() == RuleTreeResult.Status.REJECT) {
@@ -122,25 +123,17 @@ public class LotteryService {
             }
         }
 
-        // 3) Transaction A: deduct DB stock (multi-level) + create take order + deduct points
+        // 3) Transaction A: create take order + deduct points (stock already pre-deducted in Redis)
         int cost = getDrawCost(activityId);
         String takeBizId;
         try {
             Long skuId = (prize.getType() == null || prize.getType() == 0) ? null : prize.getSkuId();
             takeBizId = takeOrderService.createTakeOrder(userId, activityId, skuId, cost);
         } catch (BusinessException ex) {
-            if (ex.getCode() == 409 && prize.getSkuId() != null) {
+            if (prize.getSkuId() != null) {
                 stockService.rollbackRedisStock(activityId, prize.getSkuId());
-                PrizeConfig fb = cfgMap.get(fallbackPrizeId);
-                if (fb != null) {
-                    takeBizId = takeOrderService.createTakeOrder(userId, activityId, null, cost);
-                    prize = fb;
-                } else {
-                    return "手慢了，奖品已领完";
-                }
-            } else {
-                throw ex;
             }
+            throw ex;
         }
 
         // 4) Transaction B: save award order + task
@@ -199,14 +192,14 @@ public class LotteryService {
             throw new BusinessException(500, "Strategy cache missing: range");
         }
 
-        RList<Long> table = redissonClient.getList(RedisKeys.rateTable(activityId, key));
+        RMap<Integer, Long> table = redissonClient.getMap(RedisKeys.rateTableMap(activityId, key));
         if (table.isEmpty()) {
-            throw new BusinessException(500, "Strategy cache missing: rate table");
+            throw new BusinessException(500, "Strategy cache missing: rate map");
         }
 
         final int maxRetry = 5;
         for (int attempt = 0; attempt < maxRetry; attempt++) {
-            int idx = ThreadLocalRandom.current().nextInt(range);
+            int idx = ThreadLocalRandom.current().nextInt(range) + 1;
             Long prizeId = table.get(idx);
             if (prizeId == null) continue;
             PrizeConfig cfg = cfgMap.get(prizeId);

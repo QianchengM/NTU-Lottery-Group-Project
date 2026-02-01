@@ -22,6 +22,13 @@ public class RabbitRebateMqConsumer {
     public void onSendRebate(RebateDispatchMsg msg) {
         Long taskId = msg.getTaskId();
         try {
+            if (taskId != null) {
+                com.ntu.lottery.entity.TaskMessage task = taskMessageMapper.selectById(taskId);
+                if (task != null && "SUCCESS".equalsIgnoreCase(task.getState())) {
+                    log.info("Rebate dispatch skip (already success). taskId={}, outBizNo={}", taskId, msg.getOutBizNo());
+                    return;
+                }
+            }
             pointsService.addForRebate(msg.getUserId(), msg.getActivityId(), msg.getRebateValue(), msg.getOutBizNo());
             if (taskId != null) {
                 taskMessageMapper.markSuccess(taskId);

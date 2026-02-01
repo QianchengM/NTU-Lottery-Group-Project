@@ -35,6 +35,8 @@ spring:
       invite_bound: invite_bound
       activity_sku_stock_zero: activity_sku_stock_zero
       activity_sku_stock_zero_delay: activity_sku_stock_zero_delay
+      activity_sku_stock_deduct: activity_sku_stock_deduct
+      activity_sku_stock_deduct_delay: activity_sku_stock_deduct_delay
       send_award: send_award
       send_rebate: send_rebate
       credit_adjust_success: credit_adjust_success

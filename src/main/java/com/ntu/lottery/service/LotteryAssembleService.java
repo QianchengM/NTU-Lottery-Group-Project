@@ -101,10 +101,10 @@ public class LotteryAssembleService {
             // store range
             redissonClient.getBucket(RedisKeys.rateTableRange(activityId, "default")).set(table.range);
 
-            // store list
-            RList<Long> rList = redissonClient.getList(RedisKeys.rateTable(activityId, "default"));
-            rList.clear();
-            rList.addAll(table.indexToPrizeId);
+            // store shuffled map (index -> prizeId)
+            RMap<Integer, Long> rMap = redissonClient.getMap(RedisKeys.rateTableMap(activityId, "default"));
+            rMap.clear();
+            rMap.putAll(toIndexMap(table.indexToPrizeId));
 
             // 4) Weight rule tables
             List<ActivityWeightRule> rules = activityWeightRuleMapper.selectByActivityId(activityId);
@@ -126,9 +126,9 @@ public class LotteryAssembleService {
                     String strategyKey = "rule:" + rule.getId();
                     redissonClient.getBucket(RedisKeys.rateTableRange(activityId, strategyKey))
                             .set(ruleTable.range);
-                    RList<Long> list = redissonClient.getList(RedisKeys.rateTable(activityId, strategyKey));
-                    list.clear();
-                    list.addAll(ruleTable.indexToPrizeId);
+                    RMap<Integer, Long> map = redissonClient.getMap(RedisKeys.rateTableMap(activityId, strategyKey));
+                    map.clear();
+                    map.putAll(toIndexMap(ruleTable.indexToPrizeId));
                 }
             }
 
@@ -161,12 +161,12 @@ public class LotteryAssembleService {
         List<PrizeConfig> valid = prizes.stream()
                 .filter(p -> {
                     if (weights == null) {
-                        return p.getProbability() != null && p.getProbability() > 0;
+                        return getProbability(p) != null && getProbability(p).compareTo(BigDecimal.ZERO) > 0;
                     }
                     Integer w = weights.get(p.getId());
                     return w != null && w > 0;
                 })
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
         if (valid.isEmpty()) {
             throw new BusinessException(500, "Invalid probability config: all probabilities are null/<=0");
         }
@@ -174,8 +174,7 @@ public class LotteryAssembleService {
         BigDecimal min = null;
         BigDecimal total = BigDecimal.ZERO;
         for (PrizeConfig p : valid) {
-            int v = weights == null ? p.getProbability() : weights.get(p.getId());
-            BigDecimal prob = BigDecimal.valueOf(v);
+            BigDecimal prob = weights == null ? getProbability(p) : BigDecimal.valueOf(weights.get(p.getId()));
             total = total.add(prob);
             if (min == null || prob.compareTo(min) < 0) {
                 min = prob;
@@ -199,8 +198,7 @@ public class LotteryAssembleService {
 
         List<Long> table = new ArrayList<>(range);
         for (PrizeConfig p : valid) {
-            int v = weights == null ? p.getProbability() : weights.get(p.getId());
-            BigDecimal prob = BigDecimal.valueOf(v);
+            BigDecimal prob = weights == null ? getProbability(p) : BigDecimal.valueOf(weights.get(p.getId()));
             int slots = prob.divide(min, 0, RoundingMode.UP).intValue();
             for (int i = 0; i < slots; i++) {
                 table.add(p.getId());
@@ -223,6 +221,26 @@ public class LotteryAssembleService {
         return new ProbabilityTable(range, table);
     }
 
+    private Map<Integer, Long> toIndexMap(List<Long> table) {
+        Map<Integer, Long> map = new HashMap<>(Math.max(16, (int) (table.size() / 0.75f) + 1));
+        int idx = 1;
+        for (Long prizeId : table) {
+            map.put(idx++, prizeId);
+        }
+        return map;
+    }
+
+    private BigDecimal getProbability(PrizeConfig p) {
+        if (p == null) return null;
+        if (p.getProbabilityDecimal() != null) {
+            return p.getProbabilityDecimal();
+        }
+        if (p.getProbability() != null) {
+            return BigDecimal.valueOf(p.getProbability());
+        }
+        return null;
+    }
+
     private PrizeConfig toConfig(Map<String, Object> r) {
         PrizeConfig c = new PrizeConfig();
         c.setId(((Number) r.get("id")).longValue());
@@ -231,6 +249,16 @@ public class LotteryAssembleService {
         c.setType(r.get("type") == null ? 0 : ((Number) r.get("type")).intValue());
         c.setStock(r.get("stock") == null ? 0 : ((Number) r.get("stock")).intValue());
         c.setProbability(r.get("probability") == null ? 0 : ((Number) r.get("probability")).intValue());
+        Object pd = r.get("probability_decimal");
+        if (pd != null) {
+            if (pd instanceof BigDecimal) {
+                c.setProbabilityDecimal((BigDecimal) pd);
+            } else if (pd instanceof Number) {
+                c.setProbabilityDecimal(new BigDecimal(((Number) pd).toString()));
+            } else {
+                c.setProbabilityDecimal(new BigDecimal(pd.toString()));
+            }
+        }
         c.setPointCost(r.get("point_cost") == null ? null : ((Number) r.get("point_cost")).intValue());
         c.setSkuId(r.get("sku_id") == null ? null : ((Number) r.get("sku_id")).longValue());
         return c;

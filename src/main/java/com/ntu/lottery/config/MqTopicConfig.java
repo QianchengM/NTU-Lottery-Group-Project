@@ -45,6 +45,20 @@ public class MqTopicConfig {
     }
 
     @Bean
+    public Queue activitySkuStockDeductQueue(MqTopicProperties topics) {
+        return new Queue(topics.getActivitySkuStockDeduct(), true);
+    }
+
+    @Bean
+    public Queue activitySkuStockDeductDelayQueue(MqTopicProperties topics) {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", 2000);
+        args.put("x-dead-letter-exchange", MqTopicProperties.EXCHANGE);
+        args.put("x-dead-letter-routing-key", topics.getActivitySkuStockDeduct());
+        return new Queue(topics.getActivitySkuStockDeductDelay(), true, false, false, args);
+    }
+
+    @Bean
     public Binding sendAwardBinding(DirectExchange lotteryExchange, Queue sendAwardQueue, MqTopicProperties topics) {
         return BindingBuilder.bind(sendAwardQueue).to(lotteryExchange).with(topics.getSendAward());
     }
@@ -68,5 +82,23 @@ public class MqTopicConfig {
         return BindingBuilder.bind(activitySkuStockZeroDelayQueue)
                 .to(lotteryExchange)
                 .with(topics.getActivitySkuStockZeroDelay());
+    }
+
+    @Bean
+    public Binding activitySkuStockDeductBinding(DirectExchange lotteryExchange,
+                                                 Queue activitySkuStockDeductQueue,
+                                                 MqTopicProperties topics) {
+        return BindingBuilder.bind(activitySkuStockDeductQueue)
+                .to(lotteryExchange)
+                .with(topics.getActivitySkuStockDeduct());
+    }
+
+    @Bean
+    public Binding activitySkuStockDeductDelayBinding(DirectExchange lotteryExchange,
+                                                      Queue activitySkuStockDeductDelayQueue,
+                                                      MqTopicProperties topics) {
+        return BindingBuilder.bind(activitySkuStockDeductDelayQueue)
+                .to(lotteryExchange)
+                .with(topics.getActivitySkuStockDeductDelay());
     }
 }
