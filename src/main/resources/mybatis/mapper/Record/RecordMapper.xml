@@ -11,7 +11,7 @@
     </insert>
 
     <select id="selectByUserId" resultType="map">
-        SELECT * FROM record WHERE user_id = #{userId} ORDER BY create_time DESC
+        SELECT * FROM record WHERE user_id = #{userId} AND prize_type &lt;&gt; 0 ORDER BY create_time DESC
     </select>
 
     <select id="leaderboard" resultType="map">

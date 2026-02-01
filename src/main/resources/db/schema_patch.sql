@@ -36,10 +36,17 @@ CREATE TABLE IF NOT EXISTS activity (
 CREATE TABLE IF NOT EXISTS sys_user (
                                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
                                         username VARCHAR(64) NOT NULL,
+    password_hash VARCHAR(255) NULL,
+    password_salt VARCHAR(64) NULL,
     points INT NOT NULL DEFAULT 0,
     level INT NOT NULL DEFAULT 0,
     last_checkin_date DATE NULL,
     invite_code VARCHAR(32) NULL,
+    status TINYINT NOT NULL DEFAULT 1, -- 1: active, 0: disabled
+    last_login_time DATETIME NULL,
+    last_password_change DATETIME NULL,
+    failed_login_count INT NOT NULL DEFAULT 0,
+    locked_until DATETIME NULL,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_sys_user_invite_code (invite_code),
@@ -270,11 +277,11 @@ VALUES
     (1, 'NTU Lottery Demo Activity', 1, 10, 5, 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY));
 
 -- 2) Users
-INSERT INTO sys_user (id, username, points, level, last_checkin_date, invite_code)
+INSERT INTO sys_user (id, username, password_hash, password_salt, points, level, last_checkin_date, invite_code, status, last_login_time, last_password_change, failed_login_count, locked_until)
 VALUES
-    (1, 'alice',   200, 2, NULL, 'ALICE123'),
-    (2, 'bob',     120, 1, NULL, 'BOB456'),
-    (3, 'charlie',  30, 0, NULL, 'CHARLIE789');
+    (1, 'alice',   'Uv+NOHLSD2cqEUuineh97m21IdaLQIyT4hbVBX0Eo2Y=', 'Hz0WK0snZDaMC17f+fCW/A==', 200, 2, NULL, 'ALICE123', 1, NULL, NOW(), 0, NULL),
+    (2, 'bob',     'HC0oc6xBtRwX/CTQQR2o8Ydlw/3LxkGpdG4C0bqC2jk=', 'Kh/dRHajdqgR8IIncxGN4w==', 120, 1, NULL, 'BOB456', 1, NULL, NOW(), 0, NULL),
+    (3, 'charlie', 'j/+mAHv5ygHe8tMmv/qAciH1SPHKkyiathiMb/D3jR8=', 'Q9mvzg8LS5BfIFqvm0NOmg==', 30, 0, NULL, 'CHARLIE789', 1, NULL, NOW(), 0, NULL);
 
 -- 3) Invite relation (bob was invited by alice)
 INSERT INTO user_invite (user_id, inviter_id)

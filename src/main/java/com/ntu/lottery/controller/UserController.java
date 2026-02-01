@@ -5,6 +5,8 @@ import com.ntu.lottery.common.BusinessException;
 import com.ntu.lottery.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +20,33 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+
+    public static class LoginRequest {
+        public Long userId;
+        public String password;
+    }
+
+    public static class RegisterRequest {
+        public Long userId;
+        public String password;
+        public String inviteCode;
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request) {
+        if (request == null) {
+            throw new BusinessException(400, "request body is required");
+        }
+        return ApiResponse.ok(userService.login(request.userId, request.password));
+    }
+
+    @PostMapping("/register")
+    public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request) {
+        if (request == null) {
+            throw new BusinessException(400, "request body is required");
+        }
+        return ApiResponse.ok(userService.register(request.userId, request.password, request.inviteCode));
+    }
 
     @GetMapping("/checkin")
     public ApiResponse<String> checkIn(@RequestParam Long userId,
@@ -39,6 +68,7 @@ public class UserController {
     public ApiResponse<String> submitInviteCode(@RequestParam Long userId, @RequestParam String code) {
         return ApiResponse.ok(userService.submitInviteCode(userId, code));
     }
+
     @GetMapping("/points")
     public ApiResponse<Long> points(@RequestParam Long userId) {
         if (userId == null) {
